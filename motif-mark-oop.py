@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import cairo
+from itertools import product
 
 class Motif():
     """Contains a list of motifs to be found in sequences"""
@@ -10,15 +11,32 @@ class Motif():
         '''
         self.motif_file = motif_file
         self.motif_list = []
-
-    def read_mf(self) -> None:
-        '''
-        Reads motif file and adds motifs from it to a list
-        '''
+        self.reference = set()
         with open(self.motif_file, 'r') as mf:
             for motif in mf:
                 motif = motif.strip('\n')
                 self.motif_list.append(motif)
+
+    def generate_reference(self) -> None:
+        '''
+        Creates a reference set by adding motifs without y character. If a motif contains y character,
+        generates motifs with all possible combinations of t and c instead of y charachters and adds resulting strings 
+        to the set
+        '''
+        rep = ['t', 'c']
+        for or_motif in self.motif_list:
+            y_pos = [pos for pos, char in enumerate(or_motif) if char == 'y']
+            if not y_pos:
+                self.reference.add(or_motif)
+        
+            rep_comb = product(rep, repeat=len(y_pos))
+        
+            for comb in rep_comb:
+                new_motif = list(or_motif)
+                for j, repl in zip(y_pos, comb):
+                    new_motif[j] = repl
+                self.reference.add(''.join(new_motif))
+
 
 
 class MotifMark():
@@ -87,9 +105,7 @@ if __name__ == "__main__":
     mf_file = 'Fig_1_motifs.txt'
     fasta_f = 'Figure_1.fasta'
     my_motif_ls = Motif(mf_file)
-    my_motif_ls.read_mf()
-    my_motif_mark = MotifMark(fasta_f, my_motif_ls)
-    my_motif_mark.process_fasta()
-    print(f'{my_motif_ls.motif_list=}')
-    print(f'{my_motif_mark.motif_obj.motif_list=}')
-    #print(f'{my_motif_mark.seq_list=}')
+    my_motif_ls.generate_reference()
+    print(my_motif_ls.reference)
+    #my_motif_mark = MotifMark(fasta_f, my_motif_ls)
+    #my_motif_mark.process_fasta()
