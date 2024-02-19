@@ -25,6 +25,7 @@ class Motif():
         '''
         rep = ['t', 'c']
         for or_motif in self.motif_list:
+            or_motif = or_motif.lower()
             y_pos = [pos for pos, char in enumerate(or_motif) if char == 'y']
             if not y_pos:
                 self.reference.add(or_motif)
@@ -106,6 +107,6 @@ if __name__ == "__main__":
     fasta_f = 'Figure_1.fasta'
     my_motif_ls = Motif(mf_file)
     my_motif_ls.generate_reference()
-    print(my_motif_ls.reference)
+    print(len(my_motif_ls.reference))
     #my_motif_mark = MotifMark(fasta_f, my_motif_ls)
     #my_motif_mark.process_fasta()
