@@ -1,0 +1,35 @@
+Here I am describing a list of classes and functions in each class I would need to 
+write for the motif-mark tool
+
+I will receive two files as my input: a text file containing a list of motifs and 
+a fasta file containing a list of sequences.
+
+The classes I would need:
+
+1. Motif class 
+    this class will hold the list of motifs
+    functions of this class:
+    1.1 read .txt file and add motifs to a list
+
+2. MotifMark class  
+    this class will process the .fasta file, and create an image with the sequence diagram
+    represent as exons, introns, and motifs labelled with different colors
+    functions of this class:
+    1. Class constuctor: initialize the canvas here so it's available to the entire class. This will 
+        allow to finish and save the image from anywhere in the class.
+    2. Read the fasta file
+    3. Parse fasta file, generate one-line sequences and add them to a list
+    4. This part is done either here or in the constructor! (Need to decide) Create canvas for the future picture. I think that the size of the canvas has to be scalable
+        depending on the number of the sequences in fasta. Calculate the hight of the canvas by
+        multiplying the number of sequences plus the hight of the intron box, plus the margins, plus legend height. Legend height will be the number of sequences multiplied by 
+        the height of the legend square, plus margins. 
+        Calculate the width of the canvas by taking the length of the longest sequence plus some margins.
+    5. Iterate over each sequence and each motif in a nested for loop. When iterations are done, ave the image. 
+    6. Parse each sequence to find introns and exons. I think I only really need to find exons. First,
+        call a function that draws a line of the sequence length on canvas. Then parse the sequence string and find begining and end of each exon.
+        Begining will be a first index of the capital character, end will be the last. Send these two values into a function that will draw a rectangle over the line. 
+    7. Find motifs in each sequence. Every time motif is founded, pass it's begining and end to a function that draws a rectangle on the current line.
+    8. Draw a rectangle takes coordinates of the begining and the end of a rectangle and draws it on the current line.
+
+
+    
