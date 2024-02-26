@@ -2,7 +2,7 @@
 import cairo
 from itertools import product
 
-class Motif():
+class MotifList():
     """Contains a list of motifs to be found in sequences"""
 
     def __init__(self, motif_file: str) -> None:
@@ -38,14 +38,41 @@ class Motif():
                     new_motif[j] = repl
                 self.reference.add(''.join(new_motif))
 
+class Motif():
+    """Contains a single motif sequence and functionality to draw it on provided canvas"""
 
+    def __init__(self, motif:str, coordx:int, cordy:int, motif_height, color:tuple, ctx) -> None:
+        self.motif = motif
+        self.coordx = coordx
+        self.cordy = cordy 
+        self.motif_height = motif_height
+        self.rgb_red, self.rgb_green, self.rgb_blue = color
+        self.canvas = ctx
 
+    def draw_motif(self):
+        """Draws the given motif on canvas"""
+
+        for i in range(len(self.motif)):
+            self.canvas.set_line_width(1)
+            self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
+            self.canvas.move_to(self.coordx+i, self.cordy + motif_height)
+            self.canvas.line_to(self.coordx+i, self.cordy - motif_height)
+            self.canvas.stroke()
+        
+    # def draw_motif(self):
+    #     """Draws motif on canvas"""
+
+    #     self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
+    #     self.canvas.rectangle(self.coord1,self.motif_height,len(self.motif),self.motif_height*2)
+    #     self.canvas.fill() 
+            
+   
 class MotifMark():
     """Contains functionality for finding motifs in given fasta sequences and drawing a diagram
     representing introns, exons and different motifs"""
 
 
-    def __init__(self, fasta_file: str, motif_obj) -> None:
+    def __init__(self, fasta_file: str, motif_obj: MotifList) -> None:
         '''
         Initialize class MotifMark
         '''
@@ -107,7 +134,7 @@ class MotifMark():
         '''
         Draws sequences on the canvas representing introns as lines and exons as rectangles
         '''
-        
+
     def find_motif(self) -> list:
         '''
         Iterates over sequences and motifs finding all mitifs in each sequence
@@ -135,9 +162,36 @@ class MotifMark():
 if __name__ == "__main__":
     mf_file = 'test_motif.txt'
     fasta_f = 'test.fasta'
-    my_motif_ls = Motif(mf_file)
-    my_motif_ls.generate_reference()
-    #print(len(my_motif_ls.reference))
-    my_motif_mark = MotifMark(fasta_f, my_motif_ls)
-    my_motif_mark.process_fasta()
-    print(my_motif_mark.find_motif())
+    
+    # my_motif_ls = MotifList(mf_file)
+    # my_motif_ls.generate_reference()
+    # #print(len(my_motif_ls.reference))
+    # my_motif_mark = MotifMark(fasta_f, my_motif_ls)
+    # my_motif_mark.process_fasta()
+    # #print(my_motif_mark.find_motif())
+
+    ### test motif class
+    width = 200
+    height = 200
+    motif_height = 10
+    surf = cairo.ImageSurface (cairo.FORMAT_ARGB32, width, height)
+    ctx = cairo.Context(surf)
+    #set canvas color
+    ctx.save()
+    ctx.set_source_rgb(255, 255, 255)
+    ctx.paint()
+    ctx.restore()
+    # draw line
+    ctx.set_line_width(1)
+    ctx.set_source_rgb(0.2, 0.23, 0.9)
+    ctx.move_to(25,50)
+    ctx.line_to(125,50)
+    ctx.stroke()
+
+    test_motif = Motif('aaaaaaaa', 50, 50, motif_height, (0.2, 0.23, 0.9), ctx)
+    test_motif.draw_motif()
+    surf.write_to_png('test_motif.png')
+    ### end of test motif class
+
+
+
