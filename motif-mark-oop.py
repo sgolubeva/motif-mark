@@ -100,8 +100,18 @@ class DNA():
     
     def draw_dna(self, ctx: cairo.Context, startx: int, starty:int, color:tuple):
         """Draws the sequence backbone on canvas"""
-
-        ctx.set_line_width = 1
+        header = self.dna_header.split()
+        fig_label = header[0][1::]
+        print(fig_label)
+        # draw dna label
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.set_font_size(5)
+        ctx.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        ctx.move_to(startx, starty - 10)
+        ctx.show_text(f'gene {fig_label}')
+        ctx.stroke()
+        # draw dna backbone
+        ctx.set_line_width(1)
         ctx.set_source_rgb(color[0], color[1], color[2])
         ctx.move_to(startx, starty)
         ctx.line_to(len(self.dna_seq), starty)
@@ -242,17 +252,27 @@ if __name__ == "__main__":
     test_motif = Motif('aaaaaaaa', 50, 50, motif_height, (0.2, 0.23, 0.9), ctx)
     test_motif.draw_motif()
     surf.write_to_png('test_motif.png')
-    ### end of test motif class
+    ## end of test motif class
 
     ### test DNAList class
     fasta_f = 'Figure_1.fasta'
     dna_list = DNAList(fasta_f)
     dna_list.parse_fasta()
-    print(dna_list.max_seq_len())
-    
+    #print(dna_list.max_seq_len())
     ### end of test DNAList class
 
     ### test DNA class specifically draw DNA funct
     dna_seq = DNA('tctgccttttgggtaactctttagtattttagcttctagttcctcctctctgccctgttctgctg', '>CLASP1 chr2:121444593-121445363')
+    header = '>CLASP1 chr2:121444593-121445363'
+    label = header.split()
+    label = label[0][1::]
     
+    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, width, height)
+    context = cairo.Context(surface)
+    context.save()
+    context.set_source_rgb(255, 255, 255)
+    context.paint()
+    context.restore()
+    dna_seq.draw_dna(context, 25, 25, (0, 0, 0))
+    surface.write_to_png('test_dna.png')
     ### end of test DNA class
