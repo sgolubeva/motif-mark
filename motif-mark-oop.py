@@ -125,7 +125,7 @@ class DNA():
         ctx.show_text(f'gene {fig_label}')
         ctx.stroke()
         # draw dna backbone
-        ctx.set_line_width(5)
+        ctx.set_line_width(3)
         ctx.set_source_rgb(0, 0, 0)
         ctx.move_to(startx, starty)
         ctx.line_to(len(self.dna_seq), starty)
@@ -298,8 +298,12 @@ if __name__ == "__main__":
     max_len = dna_list.max_seq_len()
     x_margin = 25
     y_margin = 150
+    legend_y_margin = 10
+    legend_square_size = 25
+    motif_number = 4
     canv_width = max_len + (x_margin)
-    canv_height = y_margin * (len(dna_list) + 1)
+    canv_height = (y_margin * (len(dna_list) + 1)) + (motif_number*legend_square_size + (legend_y_margin * 3))
+
     surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canv_width, canv_height)
     context = cairo.Context(surface)
     context.save()
@@ -310,5 +314,11 @@ if __name__ == "__main__":
     for dna in dna_list:
         dna.draw_dna(context, x_margin, y_margin)
         y_margin = y_margin + update_by
+
+    # legend
+
+    context.set_source_rgb(0, 0, 0)
+    context.rectangle(x_margin, canv_height - 75, 25, 25)
+    context.fill()
     surface.write_to_png('test_sequences.png')
     ### end of testing DNAList and DNA
