@@ -48,6 +48,17 @@ class DNAList():
         self.dna_list: list = []
         self.max_len: int = -1
 
+
+    def __len__(self):
+        """Returns the length of the dna list"""
+
+        return len(self.dna_list)
+    
+    def __iter__(self):
+        """Creates an iterator for the DNAList object to iterate over the dna_list"""
+
+        return iter(self.dna_list)
+    
     def parse_fasta(self) -> None:
         '''
         Parses fasta file containing sequences, generates one line sequences and
@@ -63,11 +74,13 @@ class DNAList():
                         header = line
                     else:
                         self.dna_list.append(DNA(seq, header))
+                        #print(f'{header=} {seq=}')
                         seq = ''
                         header = line
                 else:
                     seq += line.strip('\n')
-            self.dna_list.append(DNA(header, seq))
+            self.dna_list.append(DNA(seq, header))
+            #print(f'{header=} {seq=}')
     
     def max_seq_len(self):
         """Iterates over the list of dna objects accessing their length, finds and returns
@@ -98,21 +111,22 @@ class DNA():
 
         return self.dna_seq
     
-    def draw_dna(self, ctx: cairo.Context, startx: int, starty:int, color:tuple):
+    def draw_dna(self, ctx: cairo.Context, startx: int, starty:int):
         """Draws the sequence backbone on canvas"""
         header = self.dna_header.split()
+        
         fig_label = header[0][1::]
-        print(fig_label)
+        
         # draw dna label
         ctx.set_source_rgb(0, 0, 0)
-        ctx.set_font_size(5)
+        ctx.set_font_size(15)
         ctx.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-        ctx.move_to(startx, starty - 10)
+        ctx.move_to(startx, starty - 50)
         ctx.show_text(f'gene {fig_label}')
         ctx.stroke()
         # draw dna backbone
-        ctx.set_line_width(1)
-        ctx.set_source_rgb(color[0], color[1], color[2])
+        ctx.set_line_width(5)
+        ctx.set_source_rgb(0, 0, 0)
         ctx.move_to(startx, starty)
         ctx.line_to(len(self.dna_seq), starty)
         ctx.stroke()
@@ -273,6 +287,28 @@ if __name__ == "__main__":
     context.set_source_rgb(255, 255, 255)
     context.paint()
     context.restore()
-    dna_seq.draw_dna(context, 25, 25, (0, 0, 0))
+    dna_seq.draw_dna(context, 25, 25)
     surface.write_to_png('test_dna.png')
     ### end of test DNA class
+
+    ### finally test if both DNAList and DNA are working together
+    fasta_f = 'Figure_1.fasta'
+    dna_list = DNAList(fasta_f)
+    dna_list.parse_fasta()
+    max_len = dna_list.max_seq_len()
+    x_margin = 25
+    y_margin = 150
+    canv_width = max_len + (x_margin)
+    canv_height = y_margin * (len(dna_list) + 1)
+    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canv_width, canv_height)
+    context = cairo.Context(surface)
+    context.save()
+    context.set_source_rgb(255, 255, 255)
+    context.paint()
+    context.restore()
+    update_by = y_margin
+    for dna in dna_list:
+        dna.draw_dna(context, x_margin, y_margin)
+        y_margin = y_margin + update_by
+    surface.write_to_png('test_sequences.png')
+    ### end of testing DNAList and DNA
