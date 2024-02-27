@@ -38,10 +38,80 @@ class MotifList():
                     new_motif[j] = repl
                 self.reference.add(''.join(new_motif))
 
+class DNAList():
+    """Processes fasta file, creates one line fasta, initializes instanses of DNA class and adds
+    them to a list"""
+
+    def __init__(self, fasta_f:str) -> None:
+        
+        self.fasta_f: str = fasta_f
+        self.dna_list: list = []
+        self.max_len: int = -1
+
+    def parse_fasta(self) -> None:
+        '''
+        Parses fasta file containing sequences, generates one line sequences and
+        saves then into a list
+        '''
+        header = ''
+        seq = ''
+        with open(self.fasta_f, 'r') as ff:
+            for line in ff:
+                line = line.strip('\n')
+                if line.startswith('>'):
+                    if seq == '':
+                        header = line
+                    else:
+                        self.dna_list.append(DNA(seq, header))
+                        seq = ''
+                        header = line
+                else:
+                    seq += line.strip('\n')
+            self.dna_list.append(DNA(header, seq))
+    
+    def max_seq_len(self):
+        """Iterates over the list of dna objects accessing their length, finds and returns
+          the max seq length"""
+        
+        for dna in self.dna_list:
+            if len(dna) > self.max_len:
+                self.max_len = len(dna)
+        return self.max_len
+
+
+class DNA():
+    """Contains DNA sequence information and draws the DNA backbone on canvas"""
+
+    def __init__(self, dna_seq: str, dna_header: str ) -> None:
+        """DNA class constructor. Takes DNA sequence and DNA header"""
+
+        self.dna_seq = dna_seq
+        self.dna_header = dna_header
+
+    def __len__(self):
+        """Returns lendth of the DNA sequence"""
+
+        return len(self.dna_seq)
+    
+    def get_dna_seq(self):
+        """Returns the DNA sequence"""
+
+        return self.dna_seq
+    
+    def draw_dna(self, ctx: cairo.Context, startx: int, starty:int, color:tuple):
+        """Draws the sequence backbone on canvas"""
+
+        ctx.set_line_width = 1
+        ctx.set_source_rgb(color[0], color[1], color[2])
+        ctx.move_to(startx, starty)
+        ctx.line_to(len(self.dna_seq), starty)
+        ctx.stroke()
+
+
 class Motif():
     """Contains a single motif sequence and functionality to draw it on provided canvas"""
 
-    def __init__(self, motif:str, coordx:int, cordy:int, motif_height, color:tuple, ctx) -> None:
+    def __init__(self, motif:str, coordx:int, cordy:int, motif_height, color:tuple, ctx: cairo.Context) -> None:
         self.motif = motif
         self.coordx = coordx
         self.cordy = cordy 
@@ -89,26 +159,7 @@ class MotifMark():
         '''
         self.parse_fasta()
 
-    def parse_fasta(self) -> None:
-        '''
-        Parses fasta file containing sequences, generates one line sequences and
-        saves then into a list
-        '''
-        header = ''
-        seq = ''
-        with open(self.fasta_file, 'r') as ff:
-            for line in ff:
-                line = line.strip('\n')
-                if line.startswith('>'):
-                    if seq == '':
-                        header = line
-                    else:
-                        self.seq_list.append((header, seq))
-                        seq = ''
-                        header = line
-                else:
-                    seq += line.strip('\n')
-            self.seq_list.append((header, seq))
+
 
     def longest_seq(self):
         '''
@@ -162,7 +213,7 @@ class MotifMark():
 if __name__ == "__main__":
     mf_file = 'test_motif.txt'
     fasta_f = 'test.fasta'
-    
+
     # my_motif_ls = MotifList(mf_file)
     # my_motif_ls.generate_reference()
     # #print(len(my_motif_ls.reference))
@@ -193,5 +244,15 @@ if __name__ == "__main__":
     surf.write_to_png('test_motif.png')
     ### end of test motif class
 
+    ### test DNAList class
+    fasta_f = 'Figure_1.fasta'
+    dna_list = DNAList(fasta_f)
+    dna_list.parse_fasta()
+    print(dna_list.max_seq_len())
+    
+    ### end of test DNAList class
 
-
+    ### test DNA class specifically draw DNA funct
+    dna_seq = DNA('tctgccttttgggtaactctttagtattttagcttctagttcctcctctctgccctgttctgctg', '>CLASP1 chr2:121444593-121445363')
+    
+    ### end of test DNA class
