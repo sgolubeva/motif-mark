@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cairo
 from itertools import product
+import re
 
 class MotifList():
     """Contains a list of motifs to be found in sequences"""
@@ -159,8 +160,24 @@ class Motif():
     #     self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
     #     self.canvas.rectangle(self.coord1,self.motif_height,len(self.motif),self.motif_height*2)
     #     self.canvas.fill() 
-            
-   
+
+class FindExon():
+    """Finds exons in a given sequence and draws them on the canvas"""
+
+    def __init__(self, seq: str) -> None:
+        """Initialize find exone class"""
+
+        self.seq = seq          
+        self.result_exons = re.finditer('[A-Z]+', self.seq)
+
+    def draw_exons(self, x_start: int, y_start: int, ctx: cairo.Context, exon_height):
+        """Draws exons on a given sequence"""
+
+        for exon in self.result_exons:
+            ctx.set_source_rgb(0, 0, 0)
+            ctx.canvas.rectangle(x_start + exon.start(), y_start - exon_height, len(exon.group()), exon_height*2)
+            ctx.fill()
+
 class MotifMark():
     """Contains functionality for finding motifs in given fasta sequences and drawing a diagram
     representing introns, exons and different motifs"""
@@ -291,18 +308,18 @@ if __name__ == "__main__":
     surface.write_to_png('test_dna.png')
     ### end of test DNA class
 
-    ### finally test if both DNAList and DNA are working together
+    ### finally test if both DNAList, DNA, and FindExon are working together
     fasta_f = 'Figure_1.fasta'
     dna_list = DNAList(fasta_f)
     dna_list.parse_fasta()
     max_len = dna_list.max_seq_len()
-    x_margin = 25
+    x_margin = 40
     y_margin = 150
-    legend_y_margin = 10
+    legend_y_margin = 30
     legend_square_size = 25
     motif_number = 4
     canv_width = max_len + (x_margin)
-    canv_height = (y_margin * (len(dna_list) + 1)) + (motif_number*legend_square_size + (legend_y_margin * 3))
+    canv_height = (y_margin * (len(dna_list)+2)) + (motif_number*legend_square_size + (legend_y_margin * 3))
 
     surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canv_width, canv_height)
     context = cairo.Context(surface)
@@ -314,11 +331,54 @@ if __name__ == "__main__":
     for dna in dna_list:
         dna.draw_dna(context, x_margin, y_margin)
         y_margin = y_margin + update_by
-
+    
     # legend
-
+    print(f' before legend{y_margin=}')
     context.set_source_rgb(0, 0, 0)
-    context.rectangle(x_margin, canv_height - 75, 25, 25)
-    context.fill()
+    for i in range(motif_number):
+        context.rectangle(x_margin, y_margin, legend_square_size, legend_square_size)
+        context.fill()
+        y_margin = y_margin + legend_y_margin
+    
+
+    # scale
+    y_margin += 100
+    # first vertical line
+    context.set_line_width(3)
+    context.set_source_rgb(0, 0, 0)
+    context.move_to(x_margin, y_margin)
+    context.line_to(x_margin, y_margin + 30)
+    context.stroke()
+    # 0 on the scale
+    context.set_font_size(20)
+    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    context.move_to(x_margin - 5, y_margin + 50)
+    context.show_text('0')
+    context.stroke()
+    # middle mark
+    context.move_to(max_len/2, y_margin)
+    context.line_to(max_len/2, y_margin + 30)
+    context.stroke()
+    # middle mark number
+    context.set_font_size(20)
+    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    context.move_to(max_len/2 - 20, y_margin + 50)
+    context.show_text(f'{round(max_len/2)}')
+    context.stroke()
+    # length of the scale
+    context.move_to(x_margin, y_margin)
+    context.line_to(max_len, y_margin)
+    context.stroke()
+    # second vertical line
+    context.move_to(max_len, y_margin)
+    context.line_to(max_len, y_margin + 30)
+    context.stroke()
+    # max number on the scale
+    context.set_font_size(20)
+    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+    context.move_to(max_len - 20, y_margin + 50)
+    context.show_text(f'{max_len}')
     surface.write_to_png('test_sequences.png')
-    ### end of testing DNAList and DNA
+
+    
+    ### end of testing DNAList, DNA, FindExon
