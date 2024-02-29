@@ -120,7 +120,7 @@ class DNA():
         
         # draw dna label
         ctx.set_source_rgb(0, 0, 0)
-        ctx.set_font_size(15)
+        ctx.set_font_size(20)
         ctx.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
         ctx.move_to(startx, starty - 50)
         ctx.show_text(f'gene {fig_label}')
@@ -161,7 +161,7 @@ class Motif():
     #     self.canvas.rectangle(self.coord1,self.motif_height,len(self.motif),self.motif_height*2)
     #     self.canvas.fill() 
 
-class FindExon():
+class FindExons():
     """Finds exons in a given sequence and draws them on the canvas"""
 
     def __init__(self, seq: str) -> None:
@@ -175,7 +175,7 @@ class FindExon():
 
         for exon in self.result_exons:
             ctx.set_source_rgb(0, 0, 0)
-            ctx.canvas.rectangle(x_start + exon.start(), y_start - exon_height, len(exon.group()), exon_height*2)
+            ctx.rectangle(x_start + exon.start(), y_start - exon_height, len(exon.group()), exon_height*2)
             ctx.fill()
 
 class MotifMark():
@@ -318,6 +318,7 @@ if __name__ == "__main__":
     legend_y_margin = 30
     legend_square_size = 25
     motif_number = 4
+    motif_height = 25
     canv_width = max_len + (x_margin)
     canv_height = (y_margin * (len(dna_list)+2)) + (motif_number*legend_square_size + (legend_y_margin * 3))
 
@@ -330,6 +331,8 @@ if __name__ == "__main__":
     update_by = y_margin
     for dna in dna_list:
         dna.draw_dna(context, x_margin, y_margin)
+        exons = FindExons(dna.get_dna_seq())
+        exons.draw_exons(x_margin, y_margin, context, motif_height)
         y_margin = y_margin + update_by
     
     # legend
