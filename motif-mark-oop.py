@@ -25,26 +25,6 @@ class MotifList():
 
         return self.motif_list
 
-    def generate_reference(self) -> None:
-        '''
-        Creates a reference set by adding motifs without y character. If a motif contains y character,
-        generates motifs with all possible combinations of t and c instead of y charachters and adds resulting strings 
-        to the set
-        '''
-        rep = ['t', 'c']
-        for or_motif in self.motif_list:
-            or_motif = or_motif.lower()
-            y_pos = [pos for pos, char in enumerate(or_motif) if char == 'y']
-            if not y_pos:
-                self.reference.add(or_motif)
-        
-            rep_comb = product(rep, repeat=len(y_pos))
-        
-            for comb in rep_comb:
-                new_motif = list(or_motif)
-                for j, repl in zip(y_pos, comb):
-                    new_motif[j] = repl
-                self.reference.add(''.join(new_motif))
 
 class DNAList():
     """Processes fasta file, creates one line fasta, initializes instanses of DNA class and adds
@@ -82,13 +62,13 @@ class DNAList():
                         header = line
                     else:
                         self.dna_list.append(DNA(seq, header))
-                        #print(f'{header=} {seq=}')
+                        
                         seq = ''
                         header = line
                 else:
                     seq += line.strip('\n')
             self.dna_list.append(DNA(seq, header))
-            #print(f'{header=} {seq=}')
+          
     
     def max_seq_len(self):
         """Iterates over the list of dna objects accessing their length, finds and returns
@@ -157,16 +137,10 @@ class Motif():
         for i in range(len(self.motif)):
             self.canvas.set_line_width(1)
             self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
-            self.canvas.move_to(self.coordx+i, self.cordy + motif_height)
-            self.canvas.line_to(self.coordx+i, self.cordy - motif_height)
+            self.canvas.move_to(self.coordx+i, self.cordy + self.motif_height)
+            self.canvas.line_to(self.coordx+i, self.cordy - self.motif_height)
             self.canvas.stroke()
         
-    # def draw_motif(self):
-    #     """Draws motif on canvas"""
-
-    #     self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
-    #     self.canvas.rectangle(self.coord1,self.motif_height,len(self.motif),self.motif_height*2)
-    #     self.canvas.fill() 
 
 class FindExons():
     """Finds exons in a given sequence and draws them on the canvas"""
@@ -185,6 +159,7 @@ class FindExons():
             ctx.rectangle(x_start + exon.start(), y_start - exon_height, len(exon.group()), exon_height*2)
             ctx.fill()
 
+
 class MotifMark():
     """Contains functionality for finding motifs in given fasta sequences and drawing a diagram
     representing introns, exons and different motifs"""
@@ -194,25 +169,32 @@ class MotifMark():
         '''
         Initialize class MotifMark
         '''
-        self.motif_list = MotifList.get_motif_list()
         self.dna_list = DNAList
+        self.dna_list.parse_fasta()
+        self.motif_list = MotifList.get_motif_list()
         self.x_margin = x_margin
         self.y_margin = y_margin
-        self.max_len = dna_list.max_seq_len()
+        self.max_len = self.dna_list.max_seq_len()
         self.legend_square_size = 25
         self.legend_margin = 30
         self.motif_height = 25
-        dna_list.parse_fasta()
+        self.motif_color_list = [(231/255, 76/255, 60/255), (142/255, 68/255, 173/255), (41/255, 128/255, 185/255),
+                                 (39/255, 174/255, 96/255), (241/255, 196/255, 15/255), (211/255, 84/255, 0/255),
+                                (0, 0, 255/255), (96/255, 96/255, 96/255), (0, 255/255, 255/255)]
+        
     
-
     def process_fasta(self) -> None:
         '''
         Main method that controls the class operations going from reading a fasta file
         to outputting an image containing sequence diagrams and motifs
         '''
+        
         self.create_canvas()
         self.draw_dna_sequences()
-
+        self.draw_legend()
+        self.draw_scale()
+        self.surface.write_to_png('test_main.png')
+        #self.find_motif()
 
 
     def create_canvas(self):
@@ -220,13 +202,13 @@ class MotifMark():
         Creates canvas to hold the digrams of sequences and legends
         '''
         
-        canvas_width = self.max_len
+        canvas_width = self.max_len + self.x_margin
         canvas_height = (self.y_margin * (len(self.dna_list) + 2)) + (len(self.motif_list) * 
-                                                                    legend_square_size + (legend_y_margin * 3))
+                                                                    self.legend_square_size + (self.legend_margin * 3))
         
         
-        surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canvas_width, canvas_height)
-        self.context = cairo.Context(surface)
+        self.surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canvas_width, canvas_height)
+        self.context = cairo.Context(self.surface)
         self.context.save()
         self.context.set_source_rgb(255, 255, 255)
         self.context.paint()
@@ -238,10 +220,26 @@ class MotifMark():
         Draws dna backbones and exons on the given canvas
         """
 
+        update_by = self.y_margin
         for dna in self.dna_list:
             dna.draw_dna(self.context, self.x_margin, self.y_margin)
             exons = FindExons(dna.get_dna_seq())
             exons.draw_exons(self.x_margin, self.y_margin, self.context, self.motif_height)
+            self.y_margin = self.y_margin + update_by 
+
+    def draw_legend(self):
+        """
+        Draws a legend on canvas
+        """
+
+        #self.context.set_source_rgb(0,0,0)
+        for i in range(len(self.motif_list)):
+            red, green, blue = self.motif_color_list[i]
+            self.context.set_source_rgb(red, green, blue)
+            self.context.rectangle(self.x_margin, self.y_margin, self.legend_square_size, self.legend_square_size)
+            self.context.fill()
+            self.y_margin = self.y_margin + self.legend_margin  
+
 
     def draw_scale(self):
         """
@@ -249,189 +247,89 @@ class MotifMark():
         """
 
         self.y_margin += 100
-        self.draw_scale_line(add=30)
-        self.draw_scale_text()
+        self.draw_vert_scale_line(self.x_margin, self.y_margin, add=30)
+        self.draw_scale_text(self.x_margin, self.y_margin, txt_number='0', subtr=5, add=50)
+        self.draw_vert_scale_line(self.max_len/2, self.y_margin, add=30)
+        self.draw_scale_text(self.max_len/2, self.y_margin, txt_number=round(self.max_len/2), subtr=20, add=50)
+        self.draw_horiz_scale_line(self.x_margin, self.y_margin, self.max_len)
+        self.draw_vert_scale_line(self.max_len, self.y_margin, add=30)
+        self.draw_scale_text(self.max_len, self.y_margin, self.max_len, subtr=20, add=50 )
 
-    def draw_scale_line(self, add=0):
+    def draw_vert_scale_line(self, x, y, add=0):
         """
         Draws a line for legend
         """
 
         self.context.set_line_width(3)
         self.context.set_source_rgb(0, 0, 0)
-        self.context.move_to(self.x_margin, self.y_margin)
-        self.context.line_to(self.x_margin, self.y_margin + add)
+        self.context.move_to(x, y)
+        self.context.line_to(x, y + add)
 
+    def draw_horiz_scale_line(self, x, y, max_x):
+        """
+        Draws a horizontal line for scale
+        """
+        self.context.move_to(x, y)
+        self.context.line_to(max_x, y)
+        self.context.stroke()
 
-    def draw_scale_text(self, subtr=0, add=0):
+    def draw_scale_text(self, pos_x, pos_y, txt_number, subtr=0, add=0):
         """
         Draws scale numbers
         """
         self.context.set_font_size(20)
         self.context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-        self.context.move_to(self.max_len/2 - subtr, self.y_margin + add)
-        self.context.show_text(f'{round(self.max_len/2)}')
+        self.context.move_to(pos_x - subtr, pos_y + add)
+        self.context.show_text(f'{txt_number}')
         self.context.stroke()
 
-
-    
-
-
+   
     def find_motif(self) -> list:
         '''
-        Iterates over sequences and motifs finding all mitifs in each sequence
+        Iterates over sequences and motifs finding all motifs in each sequence
         '''
+        amb_ncds = {'w': 'at',
+                    's': 'cg',
+                    'm': 'ac',
+                    'k': 'gt',
+                    'r': 'ag',
+                    'y': 'ct',
+                    'b': 'cgt',
+                    'd': 'agt',
+                    'h': 'act',
+                    'v': 'acg',
+                    'n': 'acgt'    
+                    }
+        
         found_motifs = []
-        for seq in self.seq_list:
-            seq = seq[1].lower()
-            for motif in self.motif_obj.motif_list:
+        for seq in self.dna_list:
+            for motif in self.motif_list:
                 for i in range(len(seq)+1-len(motif)):
                     slice = seq[i:i + len(motif)]
-                    print(f'{len(motif)} {motif} {len(slice)}')
-                    if 'y' in motif:
+                    if slice == motif:
+                        found_motifs.append(slice)
+                        
+                    else:
                         is_match = True
-                        for i  in range(len(motif)):
-                            if motif[i] != slice[i] and slice[i] not in 'ct':
+                        for i in range(len(slice)):
+                            if slice[i] != motif[i] and motif[i] not in amb_ncds:
+                                is_match = False
+                                break
+                            elif motif[i] in amb_ncds and slice[i] not in amb_ncds[motif[i]]:
                                 is_match = False
                                 break
                         if is_match:
                             found_motifs.append(slice)
-                    else:
-                        if slice == motif:
-                            found_motifs.append(slice)
         return found_motifs           
 
 if __name__ == "__main__":
-    mf_file = 'test_motif.txt'
-    fasta_f = 'test.fasta'
-
-    # my_motif_ls = MotifList(mf_file)
-    # my_motif_ls.generate_reference()
-    # #print(len(my_motif_ls.reference))
-    # my_motif_mark = MotifMark(fasta_f, my_motif_ls)
-    # my_motif_mark.process_fasta()
-    # #print(my_motif_mark.find_motif())
-
-    ### test motif class
-    width = 200
-    height = 200
-    motif_height = 10
-    surf = cairo.ImageSurface (cairo.FORMAT_ARGB32, width, height)
-    ctx = cairo.Context(surf)
-    #set canvas color
-    ctx.save()
-    ctx.set_source_rgb(255, 255, 255)
-    ctx.paint()
-    ctx.restore()
-    # draw line
-    ctx.set_line_width(1)
-    ctx.set_source_rgb(0.2, 0.23, 0.9)
-    ctx.move_to(25,50)
-    ctx.line_to(125,50)
-    ctx.stroke()
-
-    test_motif = Motif('aaaaaaaa', 50, 50, motif_height, (0.2, 0.23, 0.9), ctx)
-    test_motif.draw_motif()
-    surf.write_to_png('test_motif.png')
-    ## end of test motif class
-
-    ### test DNAList class
+    X_MARGIN = 25
+    Y_MARGIN = 150
     fasta_f = 'Figure_1.fasta'
+    motif_f = 'Fig_1_motifs.txt'
+
     dna_list = DNAList(fasta_f)
-    dna_list.parse_fasta()
-    #print(dna_list.max_seq_len())
-    ### end of test DNAList class
+    motif_list = MotifList(motif_f)
+    motif_mark = MotifMark(dna_list, motif_list, X_MARGIN, Y_MARGIN)
+    motif_mark.process_fasta()
 
-    ### test DNA class specifically draw DNA funct
-    dna_seq = DNA('tctgccttttgggtaactctttagtattttagcttctagttcctcctctctgccctgttctgctg', '>CLASP1 chr2:121444593-121445363')
-    header = '>CLASP1 chr2:121444593-121445363'
-    label = header.split()
-    label = label[0][1::]
-    
-    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, width, height)
-    context = cairo.Context(surface)
-    context.save()
-    context.set_source_rgb(255, 255, 255)
-    context.paint()
-    context.restore()
-    dna_seq.draw_dna(context, 25, 25)
-    surface.write_to_png('test_dna.png')
-    ### end of test DNA class
-
-    ### finally test if both DNAList, DNA, and FindExon are working together
-    fasta_f = 'Figure_1.fasta' # eventually be in main
-    dna_list = DNAList(fasta_f) # eventually be in main
-    dna_list.parse_fasta() 
-    max_len = dna_list.max_seq_len()
-    x_margin = 40
-    y_margin = 150
-    legend_y_margin = 30
-    legend_square_size = 25
-    motif_number = 4
-    motif_height = 25
-    canv_width = max_len + (x_margin)
-    canv_height = (y_margin * (len(dna_list)+2)) + (motif_number*legend_square_size + (legend_y_margin * 3))
-
-    surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canv_width, canv_height)
-    context = cairo.Context(surface)
-    context.save()
-    context.set_source_rgb(255, 255, 255)
-    context.paint()
-    context.restore()
-    update_by = y_margin
-    for dna in dna_list:
-        dna.draw_dna(context, x_margin, y_margin)
-        exons = FindExons(dna.get_dna_seq())
-        exons.draw_exons(x_margin, y_margin, context, motif_height)
-        y_margin = y_margin + update_by
-    
-    # legend
-    print(f' before legend{y_margin=}')
-    context.set_source_rgb(0, 0, 0)
-    for i in range(motif_number):
-        context.rectangle(x_margin, y_margin, legend_square_size, legend_square_size)
-        context.fill()
-        y_margin = y_margin + legend_y_margin
-    
-
-    # scale
-    y_margin += 100
-    # first vertical line
-    context.set_line_width(3)
-    context.set_source_rgb(0, 0, 0)
-    context.move_to(x_margin, y_margin)
-    context.line_to(x_margin, y_margin + 30)
-    context.stroke()
-    # 0 on the scale
-    context.set_font_size(20)
-    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-    context.move_to(x_margin - 5, y_margin + 50)
-    context.show_text('0')
-    context.stroke()
-    # middle mark
-    context.move_to(max_len/2, y_margin)
-    context.line_to(max_len/2, y_margin + 30)
-    context.stroke()
-    # middle mark number
-    context.set_font_size(20)
-    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-    context.move_to(max_len/2 - 20, y_margin + 50)
-    context.show_text(f'{round(max_len/2)}')
-    context.stroke()
-    # length of the scale
-    context.move_to(x_margin, y_margin)
-    context.line_to(max_len, y_margin)
-    context.stroke()
-    # second vertical line
-    context.move_to(max_len, y_margin)
-    context.line_to(max_len, y_margin + 30)
-    context.stroke()
-    # max number on the scale
-    context.set_font_size(20)
-    context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-    context.move_to(max_len - 20, y_margin + 50)
-    context.show_text(f'{max_len}')
-    surface.write_to_png('test_sequences.png')
-
-    
-    ### end of testing DNAList, DNA, FindExon
