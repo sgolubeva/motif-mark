@@ -284,12 +284,12 @@ class MotifMark():
         self.context.stroke()
 
    
-    def find_motif(self) -> list:
+    def _find_motif(self, dna) -> None:
         '''
         Iterates over sequences and motifs finding all motifs in each sequence
         '''
-        amb_ncds = {'w': 'at',
-                    's': 'cg',
+        amb_ncds = {'w': '[at]',
+                    's': '[cg]',
                     'm': 'ac',
                     'k': 'gt',
                     'r': 'ag',
@@ -301,26 +301,32 @@ class MotifMark():
                     'n': 'acgt'    
                     }
         
+        motif_color_dict = {self.motif_list[i]: self.motif_color_list[i] for i in range(len(self.motif_list))}
         found_motifs = []
         for seq in self.dna_list:
             for motif in self.motif_list:
-                for i in range(len(seq)+1-len(motif)):
-                    slice = seq[i:i + len(motif)]
-                    if slice == motif:
-                        found_motifs.append(slice)
-                        
+                regex = ''
+                for char in motif:
+                    if char in amb_ncds:
+                        regex+=f'[{amb_ncds[char]}]'
                     else:
-                        is_match = True
-                        for i in range(len(slice)):
-                            if slice[i] != motif[i] and motif[i] not in amb_ncds:
-                                is_match = False
-                                break
-                            elif motif[i] in amb_ncds and slice[i] not in amb_ncds[motif[i]]:
-                                is_match = False
-                                break
-                        if is_match:
-                            found_motifs.append(slice)
-        return found_motifs           
+                        regex+=f'[{char}]'
+                result = re.finditer(regex, seq)
+                
+                for item in result:
+                    found_motifs.append((motif, item.start(), item.end()))
+
+            sorted_found_motifs = sorted(found_motifs, key=lambda x: x[1])
+            pos_track = []
+            for k in range(len(sorted_found_motifs)):
+
+                pos_track = list(filter(lambda x: x >= sorted_found_motifs[k][1], pos_track))
+                pos_track.append(sorted_found_motifs[k][2])
+                found_motif = Motif(sorted_found_motifs[k][0], sorted_found_motifs[k][1], )
+                draw_motif(motif_color_dict[sorted_found_motifs[k][0]], sorted_found_motifs[k][0], sorted_found_motifs[k][1],
+                        motify, motifh + 5 * (len(pos_track) - 1))
+                
+    
 
 if __name__ == "__main__":
     X_MARGIN = 25
