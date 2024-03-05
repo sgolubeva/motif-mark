@@ -12,11 +12,32 @@ class MotifList():
         '''
         self.motif_file = motif_file
         self.motif_list = []
-        self.reference = set()
         with open(self.motif_file, 'r') as mf:
             for motif in mf:
-                motif = motif.strip('\n')
+                motif = motif.lower()
+                motif = Motif(motif.strip('\n'))
                 self.motif_list.append(motif)
+
+    def __iter__(self):
+        """
+        Creates an iterator for the MotifList object to iterate over the motif_list
+        """
+
+        return iter(self.motif_list)
+    
+    def __len__(self):
+        """
+        Reurns length of the motif list
+        """
+
+        return len(self.motif_list)
+    
+    def __getitem__(self, index):
+        """
+        Returns an item from self.motif_list given an index
+        """
+
+        return self.motif_list[index]
 
     def get_motif_list(self):
         """
@@ -24,6 +45,7 @@ class MotifList():
         """
 
         return self.motif_list
+    
 
 
 class DNAList():
@@ -116,30 +138,34 @@ class DNA():
         ctx.set_line_width(3)
         ctx.set_source_rgb(0, 0, 0)
         ctx.move_to(startx, starty)
-        ctx.line_to(len(self.dna_seq), starty)
+        ctx.line_to(len(self.dna_seq) + startx, starty)
         ctx.stroke()
 
 
 class Motif():
     """Contains a single motif sequence and functionality to draw it on provided canvas"""
 
-    def __init__(self, motif:str, coordx:int, cordy:int, motif_height, color:tuple, ctx: cairo.Context) -> None:
+    def __init__(self, motif:str) -> None:
         self.motif = motif
-        self.coordx = coordx
-        self.cordy = cordy 
-        self.motif_height = motif_height
-        self.rgb_red, self.rgb_green, self.rgb_blue = color
-        self.canvas = ctx
-
-    def draw_motif(self):
+ 
+    def draw_motif(self, coordx: int, coordy:int, motif_height:int, x_margin:int, color:tuple, ctx: cairo.Context):
         """Draws the given motif on canvas"""
 
+        rgb_red, rgb_green, rgb_blue = color
+        ctx.set_source_rgb(rgb_red, rgb_green, rgb_blue)
+        #coordx+=x_margin
         for i in range(len(self.motif)):
-            self.canvas.set_line_width(1)
-            self.canvas.set_source_rgb(self.rgb_red, self.rgb_green, self.rgb_blue)
-            self.canvas.move_to(self.coordx+i, self.cordy + self.motif_height)
-            self.canvas.line_to(self.coordx+i, self.cordy - self.motif_height)
-            self.canvas.stroke()
+            ctx.set_line_width(1)         
+            ctx.move_to(coordx + i + x_margin, coordy + motif_height)
+            ctx.line_to(coordx + i + x_margin, coordy - motif_height)
+            ctx.stroke()
+
+    def get_motif(self):
+        """
+        returns motif sequence when called
+        """
+
+        return self.motif
         
 
 class FindExons():
@@ -171,18 +197,22 @@ class MotifMark():
         '''
         self.dna_list = DNAList
         self.dna_list.parse_fasta()
-        self.motif_list = MotifList.get_motif_list()
+        self.motif_list = MotifList
         self.x_margin = x_margin
         self.y_margin = y_margin
         self.max_len = self.dna_list.max_seq_len()
         self.legend_square_size = 25
         self.legend_margin = 30
         self.motif_height = 25
-        self.motif_color_list = [(231/255, 76/255, 60/255), (142/255, 68/255, 173/255), (41/255, 128/255, 185/255),
+        self.motif_color_list = [(231/255, 76/255, 60/255),  (41/255, 128/255, 185/255),
                                  (39/255, 174/255, 96/255), (241/255, 196/255, 15/255), (211/255, 84/255, 0/255),
-                                (0, 0, 255/255), (96/255, 96/255, 96/255), (0, 255/255, 255/255)]
+                                (0, 0, 255/255), (96/255, 96/255, 96/255), (0, 255/255, 255/255), (142/255, 68/255, 173/255),]
+        self.motif_color_dict = {}
+        for k, motif in enumerate(self.motif_list):
+            motif = motif.get_motif()
+            self.motif_color_dict[motif] = self.motif_color_list[k]
         
-    
+
     def process_fasta(self) -> None:
         '''
         Main method that controls the class operations going from reading a fasta file
@@ -191,10 +221,10 @@ class MotifMark():
         
         self.create_canvas()
         self.draw_dna_sequences()
+
         self.draw_legend()
         self.draw_scale()
         self.surface.write_to_png('test_main.png')
-        #self.find_motif()
 
 
     def create_canvas(self):
@@ -202,10 +232,10 @@ class MotifMark():
         Creates canvas to hold the digrams of sequences and legends
         '''
         
-        canvas_width = self.max_len + self.x_margin
+        canvas_width = self.max_len + self.x_margin * 2
         canvas_height = (self.y_margin * (len(self.dna_list) + 2)) + (len(self.motif_list) * 
-                                                                    self.legend_square_size + (self.legend_margin * 3))
-        
+                                                                    self.legend_square_size + (self.legend_margin * len(self.motif_list)))
+        #import ipdb; ipdb.set_trace()
         
         self.surface = cairo.ImageSurface (cairo.FORMAT_ARGB32, canvas_width, canvas_height)
         self.context = cairo.Context(self.surface)
@@ -222,24 +252,62 @@ class MotifMark():
 
         update_by = self.y_margin
         for dna in self.dna_list:
+            print(self.x_margin)
             dna.draw_dna(self.context, self.x_margin, self.y_margin)
             exons = FindExons(dna.get_dna_seq())
             exons.draw_exons(self.x_margin, self.y_margin, self.context, self.motif_height)
+            self._find_motif(dna.get_dna_seq())
             self.y_margin = self.y_margin + update_by 
 
     def draw_legend(self):
         """
         Draws a legend on canvas
         """
+        # draw exon label
+        self.context.set_source_rgb(0, 0, 0)
+        self.context.rectangle(self.x_margin, self.y_margin, self.legend_square_size, self.legend_square_size)
+        self.context.fill()
+        self.context.set_font_size(25)
+        self.context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        self.context.move_to(self.x_margin * 2 + self.legend_square_size, self.y_margin + self.legend_square_size/2)
+        self.context.show_text(f'exon')
+        self.y_margin = self.y_margin + self.legend_margin
 
-        #self.context.set_source_rgb(0,0,0)
-        for i in range(len(self.motif_list)):
-            red, green, blue = self.motif_color_list[i]
+        # draw motif colors and motif sequence text
+        for motif in self.motif_color_dict:   
+            red, green, blue = self.motif_color_dict[motif]
             self.context.set_source_rgb(red, green, blue)
             self.context.rectangle(self.x_margin, self.y_margin, self.legend_square_size, self.legend_square_size)
             self.context.fill()
-            self.y_margin = self.y_margin + self.legend_margin  
 
+            self.context.set_font_size(25)
+            self.context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+            self.context.move_to(self.x_margin * 2 + self.legend_square_size, self.y_margin + self.legend_square_size/2)
+            self.context.show_text(f'{motif}')
+            self.y_margin = self.y_margin + self.legend_margin
+
+        self.y_margin = self.y_margin + self.legend_square_size
+        #draw example overlapping
+        
+        for i in range(10):
+            self.context.set_source_rgb(231/255, 76/255, 60/255)
+            self.context.set_line_width(1)
+            self.context.move_to(self.x_margin + i, self.y_margin)
+            self.context.line_to(self.x_margin + i, self.y_margin + self.motif_height * 2)
+            self.context.stroke()
+
+        for k in range(10):
+            self.context.set_source_rgb(39/255, 174/255, 96/255)
+            self.context.set_line_width(1)
+            self.context.move_to(self.x_margin + k + 5, self.y_margin - 10)
+            self.context.line_to(self.x_margin + k + 5, self.y_margin + self.motif_height * 2 + 10)
+            self.context.stroke()
+
+        self.context.set_font_size(25)
+        self.context.set_source_rgb(0, 0, 0)
+        self.context.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        self.context.move_to(self.x_margin * 2 + self.legend_square_size, self.y_margin + self.legend_square_size)
+        self.context.show_text(f'overlapping motifs')
 
     def draw_scale(self):
         """
@@ -249,11 +317,11 @@ class MotifMark():
         self.y_margin += 100
         self.draw_vert_scale_line(self.x_margin, self.y_margin, add=30)
         self.draw_scale_text(self.x_margin, self.y_margin, txt_number='0', subtr=5, add=50)
-        self.draw_vert_scale_line(self.max_len/2, self.y_margin, add=30)
-        self.draw_scale_text(self.max_len/2, self.y_margin, txt_number=round(self.max_len/2), subtr=20, add=50)
-        self.draw_horiz_scale_line(self.x_margin, self.y_margin, self.max_len)
-        self.draw_vert_scale_line(self.max_len, self.y_margin, add=30)
-        self.draw_scale_text(self.max_len, self.y_margin, self.max_len, subtr=20, add=50 )
+        self.draw_vert_scale_line(self.max_len/2 + self.x_margin, self.y_margin, add=30)
+        self.draw_scale_text(self.max_len/2 + self.x_margin, self.y_margin, txt_number=round(self.max_len/2), subtr=20, add=50)
+        self.draw_horiz_scale_line(self.x_margin, self.y_margin, self.max_len + self.x_margin)
+        self.draw_vert_scale_line(self.max_len + self.x_margin, self.y_margin, add=30)
+        self.draw_scale_text(self.max_len + self.x_margin, self.y_margin, self.max_len, subtr=20, add=50 )
 
     def draw_vert_scale_line(self, x, y, add=0):
         """
@@ -298,35 +366,35 @@ class MotifMark():
                     'd': 'agt',
                     'h': 'act',
                     'v': 'acg',
-                    'n': 'acgt'    
+                    'n': 'acgt',
+                    'u': 't'    
                     }
         
-        motif_color_dict = {self.motif_list[i]: self.motif_color_list[i] for i in range(len(self.motif_list))}
+        dna = dna.lower()   
         found_motifs = []
-        for seq in self.dna_list:
-            for motif in self.motif_list:
-                regex = ''
-                for char in motif:
-                    if char in amb_ncds:
-                        regex+=f'[{amb_ncds[char]}]'
-                    else:
-                        regex+=f'[{char}]'
-                result = re.finditer(regex, seq)
-                
-                for item in result:
-                    found_motifs.append((motif, item.start(), item.end()))
+        for motif in self.motif_list:
+            motif = motif.get_motif()
+            regex = ''
+            for char in motif:
+                if char in amb_ncds:
+                    regex+=f'[{amb_ncds[char]}]'
+                else:
+                    regex+=f'[{char}]'
+            result = re.finditer(regex, dna)
+            
+            for item in result:
+                found_motifs.append((motif, item.start(), item.end()))
 
-            sorted_found_motifs = sorted(found_motifs, key=lambda x: x[1])
-            pos_track = []
-            for k in range(len(sorted_found_motifs)):
+        sorted_found_motifs = sorted(found_motifs, key=lambda x: x[1])
+        pos_track = []
+        for k in range(len(sorted_found_motifs)):
 
-                pos_track = list(filter(lambda x: x >= sorted_found_motifs[k][1], pos_track))
-                pos_track.append(sorted_found_motifs[k][2])
-                found_motif = Motif(sorted_found_motifs[k][0], sorted_found_motifs[k][1], )
-                draw_motif(motif_color_dict[sorted_found_motifs[k][0]], sorted_found_motifs[k][0], sorted_found_motifs[k][1],
-                        motify, motifh + 5 * (len(pos_track) - 1))
+            pos_track = list(filter(lambda x: x >= sorted_found_motifs[k][1], pos_track))
+            pos_track.append(sorted_found_motifs[k][2])
+            found_motif = Motif(sorted_found_motifs[k][0])
+            found_motif.draw_motif(sorted_found_motifs[k][1], self.y_margin, self.motif_height + 10 * (len(pos_track) - 1),
+                                   self.x_margin, self.motif_color_dict[sorted_found_motifs[k][0]], self.context)
                 
-    
 
 if __name__ == "__main__":
     X_MARGIN = 25
