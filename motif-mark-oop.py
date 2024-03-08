@@ -47,10 +47,11 @@ class MotifList():
         return self.motif_list
     
 
-
 class DNAList():
-    """Processes fasta file, creates one line fasta, initializes instanses of DNA class and adds
-    them to a list"""
+    """
+    Processes fasta file, creates one line fasta, initializes instanses of DNA class and adds
+    them to a list
+    """
 
     def __init__(self, fasta_f:str) -> None:
         
@@ -60,12 +61,16 @@ class DNAList():
 
 
     def __len__(self):
-        """Returns the length of the dna list"""
+        """
+        Returns the length of the dna list
+        """
 
         return len(self.dna_list)
     
     def __iter__(self):
-        """Creates an iterator for the DNAList object to iterate over the dna_list"""
+        """
+        Creates an iterator for the DNAList object to iterate over the dna_list
+        """
 
         return iter(self.dna_list)
     
@@ -74,6 +79,7 @@ class DNAList():
         Parses fasta file containing sequences, generates one line sequences and
         saves then into a list
         '''
+
         header = ''
         seq = ''
         with open(self.fasta_f, 'r') as ff:
@@ -84,17 +90,22 @@ class DNAList():
                         header = line
                     else:
                         self.dna_list.append(DNA(seq, header))
+                        print(f'{header}')
+                        print(f'{line}')
                         
                         seq = ''
                         header = line
                 else:
                     seq += line.strip('\n')
             self.dna_list.append(DNA(seq, header))
+            print({header})
           
     
     def max_seq_len(self):
-        """Iterates over the list of dna objects accessing their length, finds and returns
-          the max seq length"""
+        """
+        Iterates over the list of dna objects accessing their length, finds and returns
+        the max seq length
+        """
         
         for dna in self.dna_list:
             if len(dna) > self.max_len:
@@ -106,32 +117,40 @@ class DNA():
     """Contains DNA sequence information and draws the DNA backbone on canvas"""
 
     def __init__(self, dna_seq: str, dna_header: str ) -> None:
-        """DNA class constructor. Takes DNA sequence and DNA header"""
+        """
+        DNA class constructor. Takes DNA sequence and DNA header
+        """
 
         self.dna_seq = dna_seq
         self.dna_header = dna_header
 
     def __len__(self):
-        """Returns lendth of the DNA sequence"""
+        """
+        Returns lendth of the DNA sequence
+        """
 
         return len(self.dna_seq)
     
     def get_dna_seq(self):
-        """Returns the DNA sequence"""
+        """
+        Returns the DNA sequence
+        """
 
         return self.dna_seq
     
     def draw_dna(self, ctx: cairo.Context, startx: int, starty:int):
-        """Draws the sequence backbone on canvas"""
-        header = self.dna_header.split()
-        
+        """
+        Draws the sequence backbone on canvas
+        """
+
+        header = self.dna_header.split()     
         fig_label = header[0][1::]
         
         # draw dna label
         ctx.set_source_rgb(0, 0, 0)
         ctx.set_font_size(20)
         ctx.select_font_face('Arial', cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-        ctx.move_to(startx, starty - 50)
+        ctx.move_to(startx, starty - 100)
         ctx.show_text(f'gene {fig_label}')
         ctx.stroke()
         # draw dna backbone
@@ -149,7 +168,9 @@ class Motif():
         self.motif = motif
  
     def draw_motif(self, coordx: int, coordy:int, motif_height:int, x_margin:int, color:tuple, ctx: cairo.Context):
-        """Draws the given motif on canvas"""
+        """
+        Draws the given motif on canvas
+        """
 
         rgb_red, rgb_green, rgb_blue = color
         ctx.set_source_rgb(rgb_red, rgb_green, rgb_blue)
@@ -172,13 +193,17 @@ class FindExons():
     """Finds exons in a given sequence and draws them on the canvas"""
 
     def __init__(self, seq: str) -> None:
-        """Initialize find exone class"""
+        """
+        Initialize find exone class
+        """
 
         self.seq = seq          
         self.result_exons = re.finditer('[A-Z]+', self.seq)
 
     def draw_exons(self, x_start: int, y_start: int, ctx: cairo.Context, exon_height):
-        """Draws exons on a given sequence"""
+        """
+        Draws exons on a given sequence
+        """
 
         for exon in self.result_exons:
             ctx.set_source_rgb(0, 0, 0)
@@ -224,7 +249,7 @@ class MotifMark():
 
         self.draw_legend()
         self.draw_scale()
-        self.surface.write_to_png('test_main.png')
+        self.surface.write_to_png('lookah_sg_overlapping.png')
 
 
     def create_canvas(self):
@@ -263,6 +288,7 @@ class MotifMark():
         """
         Draws a legend on canvas
         """
+
         # draw exon label
         self.context.set_source_rgb(0, 0, 0)
         self.context.rectangle(self.x_margin, self.y_margin, self.legend_square_size, self.legend_square_size)
@@ -356,8 +382,9 @@ class MotifMark():
         '''
         Iterates over sequences and motifs finding all motifs in each sequence
         '''
-        amb_ncds = {'w': '[at]',
-                    's': '[cg]',
+
+        amb_ncds = {'w': 'at',
+                    's': 'cg',
                     'm': 'ac',
                     'k': 'gt',
                     'r': 'ag',
@@ -375,17 +402,22 @@ class MotifMark():
         for motif in self.motif_list:
             motif = motif.get_motif()
             regex = ''
-            for char in motif:
-                if char in amb_ncds:
-                    regex+=f'[{amb_ncds[char]}]'
-                else:
-                    regex+=f'[{char}]'
+            # for char in motif:
+            #     if char in amb_ncds:
+            #         regex+=f'[{amb_ncds[char]}]'
+            #     else:
+            #         regex+=f'[{char}]'
+            #result = re.finditer(f'(?={regex})', dna)
+            regex = ''.join([f'[{amb_ncds[char]}]' if char in amb_ncds else char for char in motif])
+            regex = f'(?={regex})'
             result = re.finditer(regex, dna)
-            
             for item in result:
-                found_motifs.append((motif, item.start(), item.end()))
+                found_motifs.append((motif, item.start(), item.end()+len(motif)))
+            
 
         sorted_found_motifs = sorted(found_motifs, key=lambda x: x[1])
+        print(f'{sorted_found_motifs}')
+        print(f'{dna=}')
         pos_track = []
         for k in range(len(sorted_found_motifs)):
 
@@ -398,7 +430,7 @@ class MotifMark():
 
 if __name__ == "__main__":
     X_MARGIN = 25
-    Y_MARGIN = 150
+    Y_MARGIN = 200
     fasta_f = 'Figure_1.fasta'
     motif_f = 'Fig_1_motifs.txt'
 
