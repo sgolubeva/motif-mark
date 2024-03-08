@@ -234,13 +234,14 @@ class MotifMark():
     representing introns, exons and different motifs"""
 
 
-    def __init__(self, DNAList: DNAList, MotifList: MotifList, x_margin: int, y_margin: int, fasta_f: str) -> None:
+    def __init__(self, DNAList: DNAList, MotifList: MotifList, x_margin: int, y_margin: int, fgure_name: str) -> None:
         '''
         Initialize class MotifMark
         '''
         self.dna_list = DNAList
         self.dna_list.parse_fasta()
         self.motif_list = MotifList
+        self.figure_name  = figure_name
         self.x_margin = x_margin
         self.y_margin = y_margin
         self.max_len = self.dna_list.max_seq_len()
@@ -267,7 +268,7 @@ class MotifMark():
 
         self.draw_legend()
         self.draw_scale()
-        self.surface.write_to_png(f'{fasta_f}.png')
+        self.surface.write_to_png(f'{figure_name}.png')
 
 
     def create_canvas(self):
@@ -448,9 +449,9 @@ if __name__ == "__main__":
 
     X_MARGIN = 25
     Y_MARGIN = 200
-
+    figure_name = fasta_f.split('.')[0]
     dna_list = DNAList(fasta_f)
     motif_list = MotifList(motif_f)
-    motif_mark = MotifMark(dna_list, motif_list, X_MARGIN, Y_MARGIN, fasta_f)
+    motif_mark = MotifMark(dna_list, motif_list, X_MARGIN, Y_MARGIN, figure_name[0])
     motif_mark.process_fasta()
 
